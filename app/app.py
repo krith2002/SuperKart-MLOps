@@ -1,17 +1,17 @@
 import joblib
-from pathlib import Path
-
 import pandas as pd
 import streamlit as st
+from huggingface_hub import hf_hub_download
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MODEL_PATH = PROJECT_ROOT / "models" / "best_model.pkl"
+MODEL_REPO_ID = "Krithika2002/superkart-sales-model"
+MODEL_FILENAME = "best_model.pkl"
 
 
 @st.cache_resource
 def load_model():
-    return joblib.load(MODEL_PATH)
+    model_path = hf_hub_download(repo_id=MODEL_REPO_ID, filename=MODEL_FILENAME)
+    return joblib.load(model_path)
 
 
 st.title("SuperKart Sales Prediction")
@@ -28,10 +28,11 @@ city_type = st.selectbox("Store Location City Type", ["Tier 1", "Tier 2", "Tier 
 store_type = st.selectbox("Store Type", ["Supermarket Type1", "Supermarket Type2", "Departmental Store", "Food Mart"])
 
 if st.button("Predict Sales"):
-    if not MODEL_PATH.exists():
-        st.error("Model file not found. Please train the model first by running `python src/train_model.py`.")
-    else:
+    try:
         model = load_model()
+    except Exception as error:
+        st.error(f"Could not load the model from Hugging Face: {error}")
+    else:
         sample = pd.DataFrame(
             [{
                 "Product_Weight": product_weight,
