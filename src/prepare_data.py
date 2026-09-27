@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
+from huggingface_hub import HfApi, hf_hub_download
 from sklearn.model_selection import train_test_split
 
 
@@ -9,10 +10,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_PATH = DATA_DIR / "raw" / "SuperKart.csv"
 PROCESSED_DIR = DATA_DIR / "processed"
+DATASET_REPO_ID = "Krithika2002/superkart-sales-data"
+RAW_DATA_FILENAME = "SuperKart.csv"
 
 
 def load_data():
-    df = pd.read_csv(RAW_DATA_PATH)
+    raw_path = hf_hub_download(
+        repo_id=DATASET_REPO_ID,
+        filename=RAW_DATA_FILENAME,
+        repo_type="dataset",
+    )
+    df = pd.read_csv(raw_path)
     print(f"Raw data shape: {df.shape}")
     return df
 
@@ -61,12 +69,25 @@ def save_split_data(df):
     print(f"Saved train shape: {train_df.shape}")
     print(f"Saved test shape: {test_df.shape}")
 
+    token = os.getenv("HF_TOKEN")
+    if not token:
+        print("HF_TOKEN is not set; skipping upload of processed splits.")
+        return
+
+    api = HfApi(token=token)
+    for filename in ("train.csv", "test.csv"):
+        api.upload_file(
+            path_or_fileobj=str(PROCESSED_DIR / filename),
+            path_in_repo=filename,
+            repo_id=DATASET_REPO_ID,
+            repo_type="dataset",
+            commit_message=f"Update processed {filename}",
+        )
+    print(f"Uploaded train.csv and test.csv to {DATASET_REPO_ID}.")
+
 
 def main():
-    RAW_DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if not RAW_DATA_PATH.exists():
-        raise FileNotFoundError(f"Raw dataset not found at {RAW_DATA_PATH}. Please place SuperKart.csv inside data/raw/")
-
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     df = load_data()
     cleaned_df = clean_data(df)
     save_split_data(cleaned_df)
