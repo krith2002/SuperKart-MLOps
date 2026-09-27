@@ -1,4 +1,5 @@
 import joblib
+from math import sqrt
 from pathlib import Path
 
 import pandas as pd
@@ -45,7 +46,7 @@ def train_and_evaluate():
     preds = model.predict(X_test)
 
     mae = mean_absolute_error(y_test, preds)
-    rmse = mean_squared_error(y_test, preds, squared=False)
+    rmse = sqrt(mean_squared_error(y_test, preds))
     r2 = r2_score(y_test, preds)
 
     print(f"MAE: {mae:.2f}")
